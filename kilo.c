@@ -19,9 +19,11 @@ void enableRawMode() // le rw mode permet d'interpreter chaque keypress comme el
 
 	struct termios raw = orig_termios;//on déclare la structure termios
 	
-	raw.c_iflag &= ~(IXON);
+	raw.c_iflag &= ~(IXON | ICRNL); // IXON: pour disable ctrl+S  ctrl+Q
 
-	raw.c_lflag &= ~(ECHO | ICANON | ISIG); // cet opération "&= ~()" est utiliser pour inverser le bit de les locales flags spécifiés (par exemple si 1, 1 devient 0)
+	raw.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN); // cet opération "&= ~()" est utiliser pour inverser le bit de les locales flags spécifiés (par exemple si 1, 1 devient 0)
+							 // ISIG pour ctrl+C crtl+Z
+							 // etc... XD
 	
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 }	
