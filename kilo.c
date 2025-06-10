@@ -1,9 +1,14 @@
+/* includes */
 #include <unistd.h>
 #include <stdlib.h>
 #include <termios.h>
 #include <stdio.h>
 #include <ctype.h>
 #include <errno.h>
+
+/* defines */ 
+
+#define CTRL_KEY(k) ((k) & 0x1f)
 
 struct termios orig_termios;
 
