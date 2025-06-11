@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <termios.h>
 #include <stdio.h>
+#include <sys/ioctl.h>
 #include <ctype.h>
 #include <errno.h>
 
@@ -12,9 +13,31 @@
 
 
 /* data */
-struct termios orig_termios;
+
+struct editorConfig{
+	int screenrows;
+	int screencols;
+	struct termios orig_termios;
+};
+struct editorConfig E;
 
 /* fonctions */
+
+int getWindowsSize(int *rows, int *cols)
+{
+	struct winsize ws;
+
+	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0)
+	{
+		return -1;
+	}
+	else
+	{
+		*cols = ws.ws_col;
+		*rows = ws.ws_row;
+		return 0;
+	}
+}
 
 void die(const char *s)
 {
@@ -26,18 +49,18 @@ void die(const char *s)
 
 void disableRawMode()
 {
-	if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios) == -1)
+	if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &E.orig_termios) == -1)
 		die("tcsetattr");
 }
 
 void enableRawMode() // le rw mode permet d'interpreter chaque keypress comme elle vienne
 {
-	if (tcgetattr(STDIN_FILENO, &orig_termios) == -1)
+	if (tcgetattr(STDIN_FILENO, &E.orig_termios) == -1)
 		die("tcgetattr"); // dans la structure ttermios on récupere les attribut du terminals
 	atexit(disableRawMode); //utiliser atexit pour executer disableRawMode et donc désactiver le raw mode
 
 
-	struct termios raw = orig_termios;//on déclare la structure termios
+	struct termios raw = E.orig_termios;//on déclare la structure termios
 	
 	raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON); // IXON: pour disable ctrl+S  ctrl+Q
 	
@@ -89,6 +112,19 @@ void editorProcessKeypress()
 }
 
 /* output */
+void editorDrawRows()
+{
+	int y;
+	for (y = 0; y < E.screenrows; y++)
+	{
+		write(STDOUT_FILENO, "~", 1);
+
+		if (y < E.screenrows - 1)
+		{
+			write(STDOUT_FILENO, "\r\n", 2);
+		}
+	}
+}
 
 void editorRefreshScreen()
 {
@@ -113,15 +149,25 @@ void editorRefreshScreen()
 					    //
 					    //eg: "\x1b[1;1H" , 
 					  
-
+	editorDrawRows();
+	write(STDOUT_FILENO, "\x1b[H", 3);
 }
 
 
 
 /* init */
+
+ void initEditor()
+{
+	if (getWindowsSize(&E.screenrows, &E.screencols) == -1)
+		die("getWindowsSize");
+}
+
+
 int main()
 {
 	enableRawMode();
+	initEditor();
 	while(1)
 	{
 		editorRefreshScreen();
