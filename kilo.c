@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <termios.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <ctype.h>
 #include <errno.h>
@@ -80,7 +81,41 @@ void enableRawMode() // le rw mode permet d'interpreter chaque keypress comme el
 		die("tcsetattr");
 }	
 
+/* append  buffer */
 
+struct abuf {
+	char* b; // la structure pour apppend les char contient 
+		 // b est le char actuel
+		 // len est sa taille
+	int len;
+};
+
+
+#define ABUF_INIT {NULL, 0}
+
+
+void abAppend(struct abuf *ab, const char *s, int len)
+{
+	// ici on ajoute au abuf(append buffer) 
+	
+	char *new = realloc(ab->b, ab->len + len); // pour eviter les probleme de mémoire on réalloue  En gros réalloue la mémoire du abuf et on y ajoute la nouvelle len
+						   // new retourne le meme pointer
+	if (new == NULL)
+		return;
+	//ici on modifier new pour pouvoir l'utiliser et update le abuf
+	//
+	//
+	memcpy(&new[ab->len], s, len); // on ajoute la la position [ab->len] le string en entiere ( len pour spécifier la taille à ajouter)
+	ab->b = new; //update abuf string
+	ab->len += len; //update abuf len
+
+}
+
+
+void abFree(struct abuf *ab)
+{
+	free(ab->b);
+}
 
 /* terminal */
 char editorReadKey()
@@ -112,23 +147,27 @@ void editorProcessKeypress()
 }
 
 /* output */
-void editorDrawRows()
+void editorDrawRows(struct abuf *ab)
 {
 	int y;
 	for (y = 0; y < E.screenrows; y++)
 	{
-		write(STDOUT_FILENO, "~", 1);
+		abAppend(ab, "~", 1);
 
 		if (y < E.screenrows - 1)
 		{
-			write(STDOUT_FILENO, "\r\n", 2);
+			abAppend(ab, "\r\n", 2);
 		}
 	}
 }
 
 void editorRefreshScreen()
 {
-	write(STDOUT_FILENO, "\x1b[2J", 4); //
+	struct abuf ab = ABUF_INIT;
+	
+
+	abAppend(&ab, "\x1b[?25l", 6);
+	abAppend(&ab, "\x1b[2J", 4); //
 					    //1 - cette fonction permet de nettoyer le screen
 					    //let break it down
 					    //on utilise write et 4 ce qui signifie qu'on veut écrire sur 4 octets (bytes)
@@ -142,15 +181,21 @@ void editorRefreshScreen()
 					    //
 					    //
 					    //pour ce text editor nous utiliserons les escape sequence de VT100
-	write(STDOUT_FILENO, "\x1b[H", 3);  //
+	abAppend(&ab, "\x1b[H", 3);  //
 					    //2- repositionner le curseur
 					    //
 					    //La commande H prend deux argument, rows, column. le column et row commence par 1
 					    //
 					    //eg: "\x1b[1;1H" , 
 					  
-	editorDrawRows();
-	write(STDOUT_FILENO, "\x1b[H", 3);
+	editorDrawRows(&ab);
+	abAppend(&ab, "\x1b[H", 3);
+
+	abAppend(&ab, "\x1b[?25h", 6);
+
+
+	write(STDOUT_FILENO, ab.b, ab.len);
+	abFree(&ab);
 }
 
 
