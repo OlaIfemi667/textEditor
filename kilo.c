@@ -11,6 +11,9 @@
 /* defines */ 
 
 #define CTRL_KEY(k) ((k) & 0x1f)
+#define KILO_VERSION "0.0.1 by Ola-Iya"
+
+
 
 
 /* data */
@@ -152,12 +155,39 @@ void editorDrawRows(struct abuf *ab)
 	int y;
 	for (y = 0; y < E.screenrows; y++)
 	{
-		abAppend(ab, "~", 1);
-
-		if (y < E.screenrows - 1)
+		if (y == E.screenrows / 3)
 		{
-			abAppend(ab, "\r\n", 2);
+			char welcome[80];
+			int welcomelen = snprintf(welcome, sizeof(welcome), "KIlo editor -- version %s", KILO_VERSION); // snprintf permet de stocker une chaine de caractères formaté dans 
+						// dans un tableau
+			
+			if(welcomelen > E.screencols) // SI TERMINAL TROP PETIT ON TRONQUE LA TAILLE DU TABLEAU
+				welcomelen = E.screencols;
+
+			int padding = (E.screencols - welcomelen) / 2;
+
+      			if (padding) {
+        			abAppend(ab, "~", 1);
+        			padding--;
+      			}
+
+      			while (padding--)
+				abAppend(ab, " ", 1);
+
+			abAppend(ab, welcome, welcomelen);
 		}
+
+		else
+		{
+			abAppend(ab, "~", 1);
+		}
+
+		abAppend(ab, "\x1b[K", 3);
+    		if (y < E.screenrows - 1)
+		{
+      			abAppend(ab, "\r\n", 2);
+		}
+
 	}
 }
 
@@ -166,8 +196,8 @@ void editorRefreshScreen()
 	struct abuf ab = ABUF_INIT;
 	
 
-	abAppend(&ab, "\x1b[?25l", 6);
-	abAppend(&ab, "\x1b[2J", 4); //
+	abAppend(&ab, "\x1b[?25l", 6); // pour cacher le cursor
+	//abAppend(&ab, "\x1b[2J", 4); //
 					    //1 - cette fonction permet de nettoyer le screen
 					    //let break it down
 					    //on utilise write et 4 ce qui signifie qu'on veut écrire sur 4 octets (bytes)
@@ -191,7 +221,8 @@ void editorRefreshScreen()
 	editorDrawRows(&ab);
 	abAppend(&ab, "\x1b[H", 3);
 
-	abAppend(&ab, "\x1b[?25h", 6);
+	abAppend(&ab, "\x1b[?25h", 6);//faire réapparaitre le curseur 
+				      //
 
 
 	write(STDOUT_FILENO, ab.b, ab.len);
