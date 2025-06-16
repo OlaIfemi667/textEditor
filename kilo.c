@@ -15,7 +15,7 @@
 #define KILO_VERSION "0.0.1 by Ola-Iya"
 
 enum editorKey {
-  ARROW_LEFT = 1000,
+  ARROW_LEFT = 1000, // vu que j'ai  set ARROW_LEFT a 1000 les autres passeront a 1001, 1002, 1003, ......
   ARROW_RIGHT,
   ARROW_UP,
   ARROW_DOWN
